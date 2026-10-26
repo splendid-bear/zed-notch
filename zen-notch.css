@@ -1,0 +1,253 @@
+/* Zen Notch — single-toolbar prototype. */
+:root {
+  --zen-notch-width: 840px;
+  --zen-notch-height: 68px;
+  --zen-notch-focused-width: 1000px;
+  --zen-notch-focused-height: 80px;
+  --zen-notch-padding-inline: 24px;
+  --zen-notch-reveal-distance: 28px;
+  --zen-notch-radius: calc(var(--zen-native-inner-radius, 14px) / var(--zen-squircle-value, 1));
+  --zen-notch-shoulder-radius: 18px;
+  --zen-notch-top: var(--zen-element-separation, 8px);
+  /* Override if your Zen release uses a different sidebar-width variable. */
+  --zen-notch-sidebar-width: var(--zen-sidebar-width, 250px);
+  --zen-notch-background: light-dark(#ebebed, #131313);
+
+  --zen-notch-shadow:
+    0 2px 4px light-dark(rgb(0 0 0 / 20%), rgb(0 0 0 / 45%)),
+    0 8px 20px -4px light-dark(rgb(0 0 0 / 25%), rgb(0 0 0 / 60%));
+  --zen-notch-animation-duration: 220ms;
+  --zen-notch-animation-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Compact mode retains native positioning: its sidebar overlays the page. */
+:root[zen-single-toolbar="true"]:not([zen-compact-mode="true"]):not([inFullscreen="true"]):not([inDOMFullscreen="true"]):not([customizing]):not([popup-window]) {
+  --zen-notch-center: calc(50vw + var(--zen-notch-sidebar-width) / 2);
+
+  &[zen-right-side="true"] {
+    --zen-notch-center: calc(50vw - var(--zen-notch-sidebar-width) / 2);
+  }
+
+
+  /* Remove the original row's reserved height, not the input itself:
+     display:none would also hide the fixed notch and break keyboard focus. */
+  & #urlbar-container {
+    --urlbar-container-height: 0px !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin-block: 0 !important;
+    padding-block: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Let any remaining toolbar buttons determine the row height. */
+  & #nav-bar,
+  & #nav-bar-customization-target {
+    min-height: 0 !important;
+    height: auto !important;
+    margin-block: 0 !important;
+    padding-block: 0 !important;
+    overflow: visible !important;
+  }
+
+  & #urlbar {
+    --zen-notch-current-width: var(--zen-notch-width);
+    --zen-notch-current-height: var(--zen-notch-height);
+    --zen-notch-actual-width: min(var(--zen-notch-current-width), calc(100vw - var(--zen-notch-sidebar-width) - 48px));
+
+    position: fixed !important;
+    top: var(--zen-notch-top) !important;
+    left: var(--zen-notch-center) !important;
+    right: auto !important;
+    bottom: auto !important;
+    /* Individual transform properties compose with transform; neutralize
+       native floating-bar offsets before applying our own centering. */
+    translate: none !important;
+    scale: none !important;
+    rotate: none !important;
+    transform: translateX(-50%) !important;
+    box-sizing: border-box !important;
+    width: var(--zen-notch-actual-width) !important;
+    min-width: 0 !important;
+    /* Let the native suggestions contribute to the expanded panel's height. */
+    height: auto !important;
+    min-height: var(--zen-notch-current-height) !important;
+    max-height: calc(100vh - var(--zen-notch-top) - 12px) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 10 !important;
+    --urlbar-height: var(--zen-notch-current-height) !important;
+    --urlbar-container-height: var(--zen-notch-current-height) !important;
+    --urlbar-width: var(--zen-notch-actual-width) !important;
+    --urlbar-background-border-radius: var(--zen-notch-radius) !important;
+    --urlbar-background-border-top-radius-open: 0px !important;
+    border-radius: 0 0 var(--zen-notch-radius) var(--zen-notch-radius) !important;
+    border-start-start-radius: 0 !important;
+    border-start-end-radius: 0 !important;
+    border-end-start-radius: var(--zen-notch-radius) !important;
+    border-end-end-radius: var(--zen-notch-radius) !important;
+    animation: none !important;
+    transition:
+      width var(--zen-notch-animation-duration) var(--zen-notch-animation-easing),
+      min-height var(--zen-notch-animation-duration) var(--zen-notch-animation-easing),
+      opacity var(--zen-notch-animation-duration) var(--zen-notch-animation-easing) !important;
+
+    /* Keep the real input focusable for Ctrl+L, but let page clicks pass
+       through the hidden notch. Only the top-edge trigger accepts hover. */
+    opacity: 0 !important;
+    pointer-events: none !important;
+
+    &::before {
+      content: "";
+      position: absolute;
+      top: calc(0px - var(--zen-notch-top));
+      left: 50%;
+      transform: translateX(-50%);
+      width: max(0px, calc(100vw - var(--zen-notch-sidebar-width) - 48px));
+      height: max(var(--zen-notch-reveal-distance), var(--zen-notch-top));
+      background: transparent;
+      pointer-events: auto;
+      z-index: -1;
+    }
+
+    &:is(:hover, :focus-within, [focused="true"], [open], [has-popup-open="true"]) {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+
+    &:not(:hover, :focus-within, [focused="true"], [open], [has-popup-open="true"]) * {
+      pointer-events: none !important;
+    }
+
+    &:is([focused="true"], [open], [breakout-extend], [zen-floating-urlbar="true"], :focus-within) {
+      --zen-notch-current-width: var(--zen-notch-focused-width);
+      --zen-notch-current-height: var(--zen-notch-focused-height);
+    }
+
+    /* Native focus outlines can draw a top seam even with a borderless
+       background. Leave the side/bottom edge to the background shadow. */
+    &,
+    & > .urlbar-background,
+    & > .urlbar-input-container {
+      border-top: 0 !important;
+      border-block-start: 0 !important;
+      outline: none !important;
+    }
+
+    & > .urlbar-background {
+      inset: 0 !important;
+      margin: 0 !important;
+      background: var(--zen-notch-background) !important;
+
+      /* Sample the window-sized theme at the notch's position instead of
+         restarting its gradient inside this small rectangle. */
+      background-size: 100vw 100vh !important;
+      background-position: calc(var(--zen-notch-actual-width) / 2 - var(--zen-notch-center)) calc(0px - var(--zen-notch-top)) !important;
+      background-repeat: no-repeat !important;
+      border: none !important;
+      /* Override logical corner rules and breakout animations as well as
+         the physical radius: Zen changes both when suggestions open. */
+      border-radius: 0 0 var(--zen-notch-radius) var(--zen-notch-radius) !important;
+      border-start-start-radius: 0 !important;
+      border-start-end-radius: 0 !important;
+      border-end-start-radius: var(--zen-notch-radius) !important;
+      border-end-end-radius: var(--zen-notch-radius) !important;
+      corner-shape: round !important;
+      animation: none !important;
+      transform: none !important;
+      transition: background-position var(--zen-notch-animation-duration) var(--zen-notch-animation-easing) !important;
+      box-shadow: var(--zen-notch-shadow) !important;
+      /* Keep the content-style edge on the sides/bottom, not at the join. */
+      clip-path: inset(0 -100px -100px -100px);
+
+
+      /* Cut a quarter circle out of each shoulder. Painting the same
+         window-sized background keeps gradients continuous at the join. */
+      &::before,
+      &::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        width: var(--zen-notch-shoulder-radius);
+        height: var(--zen-notch-shoulder-radius);
+        pointer-events: none;
+        background: var(--zen-notch-background);
+
+        background-size: 100vw 100vh;
+        background-repeat: no-repeat;
+        transition: background-position var(--zen-notch-animation-duration) var(--zen-notch-animation-easing);
+      }
+
+      &::before {
+        right: 100%;
+        background-position: calc(var(--zen-notch-actual-width) / 2 - var(--zen-notch-center) + var(--zen-notch-shoulder-radius)) calc(0px - var(--zen-notch-top));
+        mask-image: radial-gradient(circle at 0 100%, transparent calc(var(--zen-notch-shoulder-radius) - 0.5px), black var(--zen-notch-shoulder-radius));
+      }
+
+      &::after {
+        left: 100%;
+        background-position: calc(0px - var(--zen-notch-actual-width) / 2 - var(--zen-notch-center)) calc(0px - var(--zen-notch-top));
+        mask-image: radial-gradient(circle at 100% 100%, transparent calc(var(--zen-notch-shoulder-radius) - 0.5px), black var(--zen-notch-shoulder-radius));
+      }
+    }
+
+    /* Zen normally reveals these only on sidebar-toolbar hover. The notch
+       sits outside that hover area, so keep available actions visible. */
+    & :is(.identity-box-button, .urlbar-page-action, .unified-extensions-item):not([hidden]):not([disabled]) {
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    & > .urlbar-input-container {
+      height: var(--zen-notch-current-height) !important;
+      min-height: var(--zen-notch-current-height) !important;
+      flex-shrink: 0 !important;
+      box-sizing: border-box !important;
+      padding-block: 0 !important;
+      padding-inline: var(--zen-notch-padding-inline) !important;
+      box-shadow: none !important;
+      border-radius: inherit !important;
+      animation: none !important;
+      transition:
+        height var(--zen-notch-animation-duration) var(--zen-notch-animation-easing),
+        min-height var(--zen-notch-animation-duration) var(--zen-notch-animation-easing) !important;
+    }
+
+    /* Keep the results surface inside the notch's lower corners without
+       clipping the outer shadow or identity/permission popups. */
+    & > .urlbarView {
+      border-end-start-radius: var(--zen-notch-radius) !important;
+      border-end-end-radius: var(--zen-notch-radius) !important;
+      overflow: clip !important;
+    }
+  }
+
+  /* The sidebar precedes (and normally contains) the URL bar, so it is a
+     valid anchor even when the focused URL bar moves into the top layer. */
+  @supports (left: anchor(--zen-notch-sidebar right)) and (width: anchor-size(--zen-notch-sidebar width)) {
+    & #navigator-toolbox {
+      anchor-name: --zen-notch-sidebar;
+    }
+
+    & #urlbar {
+      left: calc((anchor(--zen-notch-sidebar right, var(--zen-notch-sidebar-width)) + 100vw - var(--zen-element-separation, 8px)) / 2) !important;
+      width: min(var(--zen-notch-current-width), calc(100vw - anchor-size(--zen-notch-sidebar width, var(--zen-notch-sidebar-width)) - 48px)) !important;
+      --urlbar-width: min(var(--zen-notch-current-width), calc(100vw - anchor-size(--zen-notch-sidebar width, var(--zen-notch-sidebar-width)) - 48px)) !important;
+
+      &::before {
+        width: max(0px, calc(100vw - anchor-size(--zen-notch-sidebar width, var(--zen-notch-sidebar-width)) - 48px));
+      }
+    }
+
+    &[zen-right-side="true"] #urlbar {
+      left: calc((anchor(--zen-notch-sidebar left, calc(100vw - var(--zen-notch-sidebar-width))) + var(--zen-element-separation, 8px)) / 2) !important;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --zen-notch-animation-duration: 0ms;
+  }
+}
